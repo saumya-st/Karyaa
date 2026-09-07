@@ -1,4 +1,6 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+
 Note: This project was originally developed collaboratively in a team. This repository represents my personal fork/version of the codebase, which I am independently expanding and maintaining as part of my portfolio.
 ## Getting Started
 
