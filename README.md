@@ -1,34 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Karya
 
-First, run the development server:
+An AI-powered task-management platform built to make personal and team workflows more organized, secure, and scalable.
+
+Karya combines a responsive Next.js interface with Node.js REST APIs and a clean MVC architecture. It supports secure multi-user task workflows through JWT-based authentication and role-based access control.
+
+## Features
+
+- Secure JWT-based authentication and session management
+- Role-based access control for multi-user workflows
+- Create, update, and manage tasks through RESTful APIs
+- Responsive interface built with Next.js, React, and Tailwind CSS
+- MVC architecture for a clean, maintainable, and scalable codebase
+
+## Tech Stack
+
+| Area | Technologies |
+| --- | --- |
+| Frontend | Next.js, React, Tailwind CSS |
+| Backend | Node.js, REST APIs |
+| Authentication | JWT, role-based access control |
+| Architecture | MVC |
+
+## What I Built
+
+I structured Karya around the MVC pattern so the application can grow without becoming difficult to maintain. I built the responsive frontend experience, Node.js REST APIs, JWT-based session handling, and role-based controls that protect user data in multi-user task workflows.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or later
+- npm
+
+### Installation
+
+```bash
+git clone https://github.com/saumya-st/karyaa.git
+cd karyaa
+npm install
+```
+
+Create a `.env` file using `.env.example` as a reference, then add the required environment variables for your local setup.
+
+### Run Locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Future Improvements
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Add task reminders and notifications
+- Add team activity history and audit logs
+- Add richer analytics for task completion and productivity trends
 
-## Learn More
+## Author
 
-To learn more about Next.js, take a look at the following resources:
+**Saumya Tiwari**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Portfolio: [saumya-tiwari.vercel.app](https://saumya-tiwari.vercel.app)
+- GitHub: [@saumya-st](https://github.com/saumya-st)
+- LinkedIn: [saumya-tiwari-22909a330](https://www.linkedin.com/in/saumya-tiwari-22909a330)
