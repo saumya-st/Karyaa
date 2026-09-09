@@ -2,28 +2,31 @@
 
 An AI-powered task-management platform built to make personal and team workflows more organized, secure, and scalable.
 
-Karya combines a responsive Next.js interface with Node.js REST APIs and a clean MVC architecture. It supports secure multi-user task workflows through JWT-based authentication and role-based access control.
+Karya is a full-stack Next.js app — frontend and backend live in a single codebase, using Server Actions instead of a separate REST layer. It supports secure multi-user task workflows through NextAuth (credentials + Google OAuth), JWT sessions, and role-based access control, with automatic two-way sync to Google Calendar.
 
 ## Features
 
-- Secure JWT-based authentication and session management
-- Role-based access control for multi-user workflows
-- Create, update, and manage tasks through RESTful APIs
+- Secure authentication via NextAuth — email/password (bcrypt-hashed) and Google OAuth, with JWT sessions
+- Role-based access control for multi-user, multi-team workflows
+- Server Actions for all task/project mutations — no separate REST API layer
+- Kanban board with drag-and-drop, built with `@hello-pangea/dnd`
+- Automatic Google Calendar sync when tasks are assigned, using stored OAuth tokens
+- Token-based project invites (shareable links + email invites via Resend)
 - Responsive interface built with Next.js, React, and Tailwind CSS
-- MVC architecture for a clean, maintainable, and scalable codebase
 
 ## Tech Stack
 
 | Area | Technologies |
 | --- | --- |
-| Frontend | Next.js, React, Tailwind CSS |
-| Backend | Node.js, REST APIs |
-| Authentication | JWT, role-based access control |
-| Architecture | MVC |
+| Frontend | Next.js (App Router), React, Tailwind CSS |
+| Backend | Next.js Server Actions (no separate REST/API layer) |
+| Database | PostgreSQL (Neon, serverless) via Prisma ORM |
+| Authentication | NextAuth v5 — Credentials (bcrypt) + Google OAuth, JWT sessions |
+| Integrations | Google Calendar API, Resend (transactional email) |
 
 ## What I Built
 
-I structured Karya around the MVC pattern so the application can grow without becoming difficult to maintain. I built the responsive frontend experience, Node.js REST APIs, JWT-based session handling, and role-based controls that protect user data in multi-user task workflows.
+I structured the app around Next.js Server Actions so mutations (creating tasks, managing projects, sending invites) are plain server-side functions called directly from React components — no manual API routes or client-side fetch boilerplate. I built the responsive frontend, the Prisma data model (multi-team, multi-assignee tasks, invites, notifications, activity logs), NextAuth-based session handling with both password and Google OAuth login, and a background sync layer that pushes assigned tasks to each user's Google Calendar and keeps OAuth tokens refreshed automatically.
 
 ## Getting Started
 
@@ -63,3 +66,4 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - Portfolio: [saumya-tiwari.vercel.app](https://saumya-tiwari.vercel.app)
 - GitHub: [@saumya-st](https://github.com/saumya-st)
 - LinkedIn: [saumya-tiwari-22909a330](https://www.linkedin.com/in/saumya-tiwari-22909a330)
+
