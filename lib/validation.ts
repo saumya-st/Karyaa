@@ -98,22 +98,32 @@ export const updateTaskSchema = z
 // Projects and teams
 // ---------------------------------------------------------------------------
 
+const projectName = z
+  .string()
+  .trim()
+  .min(1, "Project name is required")
+  .max(100, "Project name must be at most 100 characters");
+const projectDescription = z
+  .string()
+  .trim()
+  .max(2000, "Description must be at most 2000 characters");
+const projectColor = z.string().regex(HEX_COLOR, "Color must be a hex value like #6366f1");
+
 export const createProjectSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Project name is required")
-    .max(100, "Project name must be at most 100 characters"),
-  description: z
-    .string()
-    .trim()
-    .max(2000, "Description must be at most 2000 characters")
-    .optional(),
-  color: z.string().regex(HEX_COLOR, "Color must be a hex value like #6366f1").default("#6366f1"),
+  name: projectName,
+  description: projectDescription.optional(),
+  color: projectColor.default("#6366f1"),
   teamId: id,
 });
 
-export const updateProjectSchema = createProjectSchema.omit({ teamId: true }).partial();
+// No defaults here: an update must only touch the fields that were sent.
+export const updateProjectSchema = z
+  .object({
+    name: projectName,
+    description: projectDescription,
+    color: projectColor,
+  })
+  .partial();
 
 export const createTeamSchema = z.object({
   name: z
