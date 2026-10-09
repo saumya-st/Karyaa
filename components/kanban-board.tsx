@@ -51,10 +51,10 @@ export function KanbanBoard({ sections, projectId, teamMembers, onTaskClick, onA
   const [addingSection, setAddingSection] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   // Track in-flight drag mutations — while >0, ignore server prop updates so the
-  // optimistic state isn't overwritten by stale RSC re-renders (Redis still warm).
+  // optimistic state isn't overwritten by stale RSC re-renders while the server catches up.
   const mutatingRef = useRef(0);
   // Absorbs the one stale RSC re-render that arrives after moveTask completes
-  // (Redis still has old positions because invalidation runs in after())
+  // (the first re-render after the mutation can still carry old positions)
   const pendingRefreshRef = useRef(false);
 
   // Sync from server when RSC re-renders deliver fresh data (only when idle)
@@ -89,7 +89,7 @@ export function KanbanBoard({ sections, projectId, teamMembers, onTaskClick, onA
     mutatingRef.current++;
     try {
       await moveTask(taskId, newSectionId, newOrder);
-      // Flag to skip the imminent stale RSC re-render (Redis not yet invalidated)
+      // Flag to skip the imminent stale RSC re-render (may still carry old positions)
       pendingRefreshRef.current = true;
       // Safety reset: if RSC re-render somehow never comes, unblock after 5s
       setTimeout(() => { pendingRefreshRef.current = false; }, 5000);

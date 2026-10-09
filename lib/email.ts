@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://anant-ivory.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 interface InviteEmailParams {
   to: string;

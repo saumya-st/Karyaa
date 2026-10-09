@@ -5,7 +5,7 @@ import { auth, getCurrentUser } from "@/lib/auth";
 import { sendInviteEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://anant-ivory.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // Look up a user by email (for the invite dialog)
 export async function lookupUserByEmail(email: string) {
