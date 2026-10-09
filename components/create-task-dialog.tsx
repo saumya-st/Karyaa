@@ -40,6 +40,7 @@ export function CreateTaskDialog({
   // Close dialog only after the router.refresh() transition has fully painted
   useEffect(() => {
     if (readyToClose && !isPending) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentionally reacts to the transition settling
       setLoading(false);
       onClose();
     }
