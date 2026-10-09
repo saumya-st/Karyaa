@@ -34,6 +34,7 @@ export function NavigationProgress() {
   // When pathname settles (component has mounted with new route) → complete bar
   useEffect(() => {
     if (!visible) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- drives the progress animation on route change
     setWidth(100);
     const t = setTimeout(() => {
       setVisible(false);
