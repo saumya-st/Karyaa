@@ -1,0 +1,28 @@
+# dependencies and build output (rebuilt inside the image)
+node_modules
+.next
+out
+coverage
+*.tsbuildinfo
+
+# secrets and local config
+.env
+.env.*
+!.env.example
+
+# tooling and docs that the image does not need
+.git
+.github
+.vscode
+.idea
+docs
+tests
+vitest.config.mts
+README.md
+LICENSE
+Dockerfile
+.dockerignore
+
+# OS / editor noise
+.DS_Store
+npm-debug.log*
