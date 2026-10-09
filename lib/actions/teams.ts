@@ -5,17 +5,17 @@ import { getCurrentUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { cache } from "react";
 import { MANAGER_ROLES, assertTeamRole, isAuthorizationError } from "@/lib/authz";
+import { createTeamSchema, validate } from "@/lib/validation";
 
 export async function createTeam(name: string) {
   const userId = await getCurrentUserId();
 
-  if (!name || !name.trim()) {
-    return { error: "Team name is required" };
-  }
+  const parsed = validate(createTeamSchema, { name });
+  if (!parsed.success) return { error: parsed.error };
 
   const team = await prisma.team.create({
     data: {
-      name: name.trim(),
+      name: parsed.data.name,
       members: {
         create: {
           userId,

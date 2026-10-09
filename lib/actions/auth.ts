@@ -3,15 +3,12 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signIn } from "@/lib/auth";
+import { formDataToObject, loginSchema, registerSchema, validate } from "@/lib/validation";
 
 export async function registerUser(formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  if (!name || !email || !password) {
-    return { error: "All fields are required" };
-  }
+  const parsed = validate(registerSchema, formDataToObject(formData, ["name", "email", "password"]));
+  if (!parsed.success) return { error: parsed.error };
+  const { name, email, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -25,7 +22,7 @@ export async function registerUser(formData: FormData) {
   });
 
   // Create a default team for the user
-  const team = await prisma.team.create({
+  await prisma.team.create({
     data: {
       name: `${name}'s Team`,
       members: {
@@ -47,13 +44,10 @@ export async function registerUser(formData: FormData) {
 }
 
 export async function loginUser(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const parsed = validate(loginSchema, formDataToObject(formData, ["email", "password"]));
+  if (!parsed.success) return { error: parsed.error };
+  const { email, password } = parsed.data;
   const callbackUrl = (formData.get("callbackUrl") as string) || "/dashboard";
-
-  if (!email || !password) {
-    return { error: "All fields are required" };
-  }
 
   try {
     await signIn("credentials", {

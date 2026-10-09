@@ -6,25 +6,33 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { syncTaskToAssignees, updateCalendarEvent, removeTaskFromCalendars } from "@/lib/google-calendar";
 import { assertProjectMember, assertTaskMember } from "@/lib/authz";
+import { createTaskSchema, formDataToObject, updateTaskSchema, validate } from "@/lib/validation";
 
 export async function createTask(formData: FormData) {
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const projectId = formData.get("projectId") as string;
-  const sectionId = formData.get("sectionId") as string;
-  const priority = (formData.get("priority") as string) || "medium";
-  const dueDate = formData.get("dueDate") as string;
-  const startDate = formData.get("startDate") as string;
-  const trackingStatus = (formData.get("trackingStatus") as string) || "on_track";
-
-  // Support multiple assignees
-  const assigneeIds = formData.getAll("assigneeId") as string[];
-  const validAssigneeIds = assigneeIds.filter((id) => id && id.trim() !== "");
+  const parsed = validate(createTaskSchema, {
+    ...formDataToObject(
+      formData,
+      ["title", "description", "projectId", "sectionId", "priority", "trackingStatus", "dueDate", "startDate"],
+      ["priority", "trackingStatus"]
+    ),
+    // Support multiple assignees
+    assigneeIds: formData
+      .getAll("assigneeId")
+      .filter((id): id is string => typeof id === "string" && id.trim() !== ""),
+  });
+  if (!parsed.success) return { error: parsed.error };
+  const {
+    title,
+    description,
+    projectId,
+    sectionId,
+    priority,
+    trackingStatus,
+    dueDate,
+    startDate,
+    assigneeIds: validAssigneeIds,
+  } = parsed.data;
   const primaryAssigneeId = validAssigneeIds[0] || null;
-
-  if (!title || !projectId || !sectionId) {
-    return { error: "Title, project, and section are required" };
-  }
 
   const user = await getCurrentUser();
   await assertProjectMember(user.id, projectId);
@@ -89,7 +97,7 @@ export async function createTask(formData: FormData) {
   return { success: true, taskId: task.id };
 }
 
-export async function updateTask(taskId: string, data: {
+export async function updateTask(taskId: string, input: {
   title?: string;
   description?: string;
   priority?: string;
@@ -102,6 +110,10 @@ export async function updateTask(taskId: string, data: {
   order?: number;
   completed?: boolean;
 }) {
+  const parsed = validate(updateTaskSchema, input);
+  if (!parsed.success) return { error: parsed.error };
+  const data = parsed.data;
+
   // Parallel: fetch user session + task at the same time
   const [user, task] = await Promise.all([
     getCurrentUser(),
