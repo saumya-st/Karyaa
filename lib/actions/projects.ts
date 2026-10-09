@@ -13,15 +13,16 @@ import {
   assertTaskMember,
   assertTeamRole,
 } from "@/lib/authz";
+import { createProjectSchema, formDataToObject, updateProjectSchema, validate } from "@/lib/validation";
 
 export async function createProject(formData: FormData) {
   const userId = await getCurrentUserId();
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  const color = (formData.get("color") as string) || "#6366f1";
-  const teamId = formData.get("teamId") as string;
-
-  if (!name || !teamId) return { error: "Name and team are required" };
+  const parsed = validate(
+    createProjectSchema,
+    formDataToObject(formData, ["name", "description", "color", "teamId"], ["color"])
+  );
+  if (!parsed.success) return { error: parsed.error };
+  const { name, description, color, teamId } = parsed.data;
   // Guests may view a team's work but not add projects to it.
   await assertTeamRole(userId, teamId, ["owner", "admin", "member"]);
 
@@ -49,13 +50,15 @@ export async function createProject(formData: FormData) {
 export async function updateProject(projectId: string, formData: FormData) {
   const userId = await getCurrentUserId();
   await assertProjectMember(userId, projectId);
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  const color = formData.get("color") as string;
+  const parsed = validate(
+    updateProjectSchema,
+    formDataToObject(formData, ["name", "description", "color"], ["color"])
+  );
+  if (!parsed.success) return { error: parsed.error };
 
   await prisma.project.update({
     where: { id: projectId },
-    data: { name, description, color },
+    data: parsed.data,
   });
 
   revalidatePath(`/dashboard/projects/${projectId}`, "page");
