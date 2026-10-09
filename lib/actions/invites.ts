@@ -4,11 +4,24 @@ import { prisma } from "@/lib/prisma";
 import { auth, getCurrentUser } from "@/lib/auth";
 import { sendInviteEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
+import { MANAGER_ROLES, assertProjectRole, isAuthorizationError } from "@/lib/authz";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+/** Inviting people to a project is restricted to the owning team's owners/admins. */
+async function assertCanInvite(userId: string, projectId: string) {
+  try {
+    await assertProjectRole(userId, projectId, MANAGER_ROLES);
+    return null;
+  } catch (err) {
+    if (isAuthorizationError(err)) return { error: "Only team owners and admins can invite members" };
+    throw err;
+  }
+}
+
 // Look up a user by email (for the invite dialog)
 export async function lookupUserByEmail(email: string) {
+  await getCurrentUser();
   if (!email || !email.includes("@")) return null;
 
   const user = await prisma.user.findUnique({
@@ -22,6 +35,8 @@ export async function lookupUserByEmail(email: string) {
 // Add an existing user directly to a project team
 export async function addUserToProjectTeam(projectId: string, userId: string) {
   const currentUser = await getCurrentUser();
+  const denied = await assertCanInvite(currentUser.id, projectId);
+  if (denied) return { error: denied.error };
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -63,6 +78,8 @@ export async function addUserToProjectTeam(projectId: string, userId: string) {
 // Create a shareable invite link for a project
 export async function createProjectInviteLink(projectId: string) {
   const currentUser = await getCurrentUser();
+  const denied = await assertCanInvite(currentUser.id, projectId);
+  if (denied) return { error: denied.error };
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -89,6 +106,8 @@ export async function createProjectInviteLink(projectId: string) {
 // Create invite + send email
 export async function sendProjectInviteEmail(projectId: string, email: string) {
   const currentUser = await getCurrentUser();
+  const denied = await assertCanInvite(currentUser.id, projectId);
+  if (denied) return { error: denied.error };
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },

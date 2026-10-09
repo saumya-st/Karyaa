@@ -29,8 +29,9 @@ export const getUnreadCount = cache(async () => {
 
 export async function markAsRead(notificationId: string) {
   const userId = await getCurrentUserId();
-  await prisma.notification.update({
-    where: { id: notificationId },
+  // Scoped to the caller so one user cannot mark another user's notifications.
+  await prisma.notification.updateMany({
+    where: { id: notificationId, userId },
     data: { read: true },
   });
   revalidatePath("/dashboard/inbox");
@@ -48,7 +49,8 @@ export async function markAllAsRead() {
 }
 
 export async function deleteNotification(notificationId: string) {
-  await prisma.notification.delete({ where: { id: notificationId } });
+  const userId = await getCurrentUserId();
+  await prisma.notification.deleteMany({ where: { id: notificationId, userId } });
   revalidatePath("/dashboard/inbox");
 }
 

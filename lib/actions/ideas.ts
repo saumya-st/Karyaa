@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { assertTeamMember } from "@/lib/authz";
 
 // Get all user's team IDs
 async function getUserTeamIds(userId: string) {
@@ -122,6 +123,10 @@ export async function deleteIdea(id: string) {
 export async function toggleIdeaVote(ideaId: string) {
   const user = await getCurrentUser();
 
+  const idea = await prisma.idea.findUnique({ where: { id: ideaId }, select: { teamId: true } });
+  if (!idea) return { error: "Idea not found" };
+  await assertTeamMember(user.id, idea.teamId);
+
   const existingVote = await prisma.ideaVote.findUnique({
     where: { ideaId_userId: { ideaId, userId: user.id } },
   });
@@ -147,8 +152,9 @@ export async function addIdeaComment(ideaId: string, content: string) {
 
   if (!content?.trim()) return { error: "Comment cannot be empty" };
 
-  const idea = await prisma.idea.findUnique({ where: { id: ideaId }, select: { creatorId: true, title: true } });
+  const idea = await prisma.idea.findUnique({ where: { id: ideaId }, select: { creatorId: true, title: true, teamId: true } });
   if (!idea) return { error: "Idea not found" };
+  await assertTeamMember(user.id, idea.teamId);
 
   await prisma.ideaComment.create({
     data: {

@@ -2,15 +2,19 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/auth";
+import { assertTaskMember } from "@/lib/authz";
 
 export async function logActivity(taskId: string, action: string, details?: string) {
   const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
   await prisma.activityLog.create({
     data: { action, details, taskId, userId },
   });
 }
 
 export async function getTaskActivities(taskId: string) {
+  const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
   return prisma.activityLog.findMany({
     where: { taskId },
     orderBy: { createdAt: "desc" },

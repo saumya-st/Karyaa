@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { AuthorizationError, MANAGER_ROLES, assertProjectMember, assertTaskMember } from "@/lib/authz";
 
 export async function addComment(taskId: string, content: string) {
   const user = await getCurrentUser();
+  await assertTaskMember(user.id, taskId);
 
   const comment = await prisma.comment.create({
     data: {
@@ -52,11 +54,18 @@ export async function addComment(taskId: string, content: string) {
 }
 
 export async function deleteComment(commentId: string) {
+  const user = await getCurrentUser();
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
     include: { task: true },
   });
   if (!comment) return;
+
+  // Authors may delete their own comments; team owners/admins may delete any.
+  const membership = await assertProjectMember(user.id, comment.task.projectId);
+  if (comment.authorId !== user.id && !MANAGER_ROLES.includes(membership.role)) {
+    throw new AuthorizationError("You can only delete your own comments");
+  }
 
   await prisma.comment.delete({ where: { id: commentId } });
   revalidatePath(`/dashboard/projects/${comment.task.projectId}`, "page");
@@ -69,6 +78,7 @@ export async function addAttachment(taskId: string, data: {
   mimeType: string;
 }) {
   const user = await getCurrentUser();
+  await assertTaskMember(user.id, taskId);
 
   const attachment = await prisma.attachment.create({
     data: {
@@ -92,11 +102,17 @@ export async function addAttachment(taskId: string, data: {
 }
 
 export async function deleteAttachment(attachmentId: string) {
+  const user = await getCurrentUser();
   const attachment = await prisma.attachment.findUnique({
     where: { id: attachmentId },
     include: { task: true },
   });
   if (!attachment) return;
+
+  const membership = await assertProjectMember(user.id, attachment.task.projectId);
+  if (attachment.uploadedById !== user.id && !MANAGER_ROLES.includes(membership.role)) {
+    throw new AuthorizationError("You can only delete your own attachments");
+  }
 
   await prisma.attachment.delete({ where: { id: attachmentId } });
   revalidatePath(`/dashboard/projects/${attachment.task.projectId}`, "page");
