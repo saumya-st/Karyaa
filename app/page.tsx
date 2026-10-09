@@ -67,7 +67,7 @@ export default async function Home() {
             <div className="w-3 h-3 rounded-full bg-red-400" />
           </div>
           <p className="text-sm font-medium leading-relaxed text-[#c4b85a] italic">
-            "Take notes to keep track of crucial details, and accomplish more tasks with ease."
+            &quot;Take notes to keep track of crucial details, and accomplish more tasks with ease.&quot;
           </p>
         </FloatingCard>
 
@@ -79,7 +79,7 @@ export default async function Home() {
           </div>
           <div className="space-y-2">
             <div className="p-3 bg-[#1a1a1a] rounded-xl border border-[#262626]">
-              <p className="text-xs font-bold text-[#f5f5f5] mb-0.5">Today's Meeting</p>
+              <p className="text-xs font-bold text-[#f5f5f5] mb-0.5">Today&apos;s Meeting</p>
               <p className="text-[11px] text-[#737373]">Call with marketing team</p>
               <div className="flex items-center gap-1 mt-2 text-[#6B7A45] font-semibold text-[11px]">
                 <Clock className="w-3 h-3" />
@@ -95,7 +95,7 @@ export default async function Home() {
 
         {/* Bottom-left: Today's tasks */}
         <FloatingCard className="absolute bottom-16 left-4 xl:left-12 hidden lg:block w-72 rotate-2 hover:rotate-0 transition-transform duration-500 z-10">
-          <h4 className="text-sm font-bold text-[#f5f5f5] mb-4">Today's tasks</h4>
+          <h4 className="text-sm font-bold text-[#f5f5f5] mb-4">Today&apos;s tasks</h4>
           <TaskCard title="New ideas for campaign" color="bg-orange-400" progress={60} date="Sep 10" />
           <TaskCard title="Design PPT #4" color="bg-[#6B7A45]" progress={112} date="Sep 18" />
         </FloatingCard>

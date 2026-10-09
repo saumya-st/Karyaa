@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { createProject } from "@/lib/actions/projects";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { LoaderOverlay } from "@/components/ui/loader";
+
+const subscribeNoop = () => () => {};
 
 const COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e",
@@ -22,11 +24,11 @@ export function CreateProjectDialog({ teams, trigger }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  useEffect(() => { setMounted(true); }, []);
+  // Hydration-safe "has mounted" flag: false on the server, true on the client.
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

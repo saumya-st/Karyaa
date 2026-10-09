@@ -5,15 +5,26 @@ import { getCurrentUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { cache } from "react";
+import {
+  MANAGER_ROLES,
+  assertProjectMember,
+  assertProjectRole,
+  assertSectionMember,
+  assertTaskMember,
+  assertTeamRole,
+} from "@/lib/authz";
+import { createProjectSchema, formDataToObject, updateProjectSchema, validate } from "@/lib/validation";
 
 export async function createProject(formData: FormData) {
   const userId = await getCurrentUserId();
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  const color = (formData.get("color") as string) || "#6366f1";
-  const teamId = formData.get("teamId") as string;
-
-  if (!name || !teamId) return { error: "Name and team are required" };
+  const parsed = validate(
+    createProjectSchema,
+    formDataToObject(formData, ["name", "description", "color", "teamId"], ["color"])
+  );
+  if (!parsed.success) return { error: parsed.error };
+  const { name, description, color, teamId } = parsed.data;
+  // Guests may view a team's work but not add projects to it.
+  await assertTeamRole(userId, teamId, ["owner", "admin", "member"]);
 
   const project = await prisma.project.create({
     data: {
@@ -37,13 +48,17 @@ export async function createProject(formData: FormData) {
 }
 
 export async function updateProject(projectId: string, formData: FormData) {
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  const color = formData.get("color") as string;
+  const userId = await getCurrentUserId();
+  await assertProjectMember(userId, projectId);
+  const parsed = validate(
+    updateProjectSchema,
+    formDataToObject(formData, ["name", "description", "color"], ["color"])
+  );
+  if (!parsed.success) return { error: parsed.error };
 
   await prisma.project.update({
     where: { id: projectId },
-    data: { name, description, color },
+    data: parsed.data,
   });
 
   revalidatePath(`/dashboard/projects/${projectId}`, "page");
@@ -51,7 +66,8 @@ export async function updateProject(projectId: string, formData: FormData) {
 }
 
 export async function deleteProject(projectId: string) {
-  await getCurrentUserId();
+  const userId = await getCurrentUserId();
+  await assertProjectRole(userId, projectId, MANAGER_ROLES);
   await prisma.project.delete({ where: { id: projectId } });
   revalidatePath("/dashboard");
 }
@@ -74,10 +90,11 @@ async function fetchProjects(userId: string) {
 }
 
 export const getProject = cache(async (projectId: string) => {
-  return fetchProject(projectId);
+  const userId = await getCurrentUserId();
+  return fetchProject(projectId, userId);
 });
 
-async function fetchProject(projectId: string) {
+async function fetchProject(projectId: string, userId: string) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
@@ -129,6 +146,9 @@ async function fetchProject(projectId: string) {
 
   if (!project) return null;
 
+  // Non-members get the same result as a missing project (renders as 404).
+  if (!project.team.members.some((m) => m.userId === userId)) return null;
+
   // Merge linked tasks into sections so they appear alongside direct tasks
   const merged = {
     ...project,
@@ -154,7 +174,8 @@ async function fetchProject(projectId: string) {
 }
 
 export async function getProjectOverview(projectId: string) {
-  await getCurrentUserId();
+  const userId = await getCurrentUserId();
+  await assertProjectMember(userId, projectId);
 
   const activities = await prisma.activityLog.findMany({
     where: { task: { projectId } },
@@ -172,6 +193,8 @@ export async function getProjectOverview(projectId: string) {
 }
 
 export async function createSection(projectId: string, name: string) {
+  const userId = await getCurrentUserId();
+  await assertProjectMember(userId, projectId);
   const lastSection = await prisma.section.findFirst({
     where: { projectId },
     orderBy: { order: "desc" },
@@ -189,6 +212,11 @@ export async function createSection(projectId: string, name: string) {
 }
 
 export async function deleteSection(sectionId: string, projectId: string) {
+  const userId = await getCurrentUserId();
+  const section = await assertSectionMember(userId, sectionId);
+  if (section.projectId !== projectId) {
+    return { error: "Section does not belong to this project" };
+  }
   await prisma.section.delete({ where: { id: sectionId } });
   revalidatePath(`/dashboard/projects/${projectId}`, "page");
 }
@@ -204,14 +232,18 @@ export async function addTaskToProject(taskId: string, targetProjectId: string, 
     include: { project: { select: { teamId: true, id: true } } },
   });
   if (!task) return { error: "Task not found" };
+  await assertProjectMember(userId, task.project.id);
 
-  const targetProject = await prisma.project.findUnique({
-    where: { id: targetProjectId },
-    select: { teamId: true },
-  });
+  const [targetProject, targetSection] = await Promise.all([
+    prisma.project.findUnique({ where: { id: targetProjectId }, select: { teamId: true } }),
+    prisma.section.findUnique({ where: { id: targetSectionId }, select: { projectId: true } }),
+  ]);
   if (!targetProject) return { error: "Project not found" };
   if (task.project.teamId !== targetProject.teamId) return { error: "Projects must be in the same team" };
   if (task.project.id === targetProjectId) return { error: "Task is already in this project" };
+  if (!targetSection || targetSection.projectId !== targetProjectId) {
+    return { error: "Section does not belong to the target project" };
+  }
 
   // Check not already linked
   const existing = await prisma.taskProject.findUnique({
@@ -246,6 +278,7 @@ export async function removeTaskFromProject(taskId: string, projectId: string) {
     where: { taskId_projectId: { taskId, projectId } },
   });
   if (!link) return { error: "Task is not linked to this project" };
+  await assertProjectMember(userId, projectId);
 
   const task = await prisma.task.findUnique({ where: { id: taskId }, select: { projectId: true } });
   if (!task) return { error: "Task not found" };
@@ -272,7 +305,8 @@ export async function removeTaskFromProject(taskId: string, projectId: string) {
 }
 
 export async function getTeamProjectsForTask(taskId: string) {
-  await getCurrentUserId();
+  const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
 
   const task = await prisma.task.findUnique({
     where: { id: taskId },

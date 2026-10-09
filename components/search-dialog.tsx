@@ -48,6 +48,7 @@ export function SearchDialog() {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the dialog state whenever it closes
       setQuery("");
       setResults(null);
     }
