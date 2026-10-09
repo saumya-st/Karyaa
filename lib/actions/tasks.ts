@@ -5,6 +5,7 @@ import { getCurrentUserId, getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { syncTaskToAssignees, updateCalendarEvent, removeTaskFromCalendars } from "@/lib/google-calendar";
+import { assertProjectMember, assertTaskMember } from "@/lib/authz";
 
 export async function createTask(formData: FormData) {
   const title = formData.get("title") as string;
@@ -25,11 +26,17 @@ export async function createTask(formData: FormData) {
     return { error: "Title, project, and section are required" };
   }
 
-  // Parallel: user auth + last task order
-  const [user, lastTask] = await Promise.all([
-    getCurrentUser(),
+  const user = await getCurrentUser();
+  await assertProjectMember(user.id, projectId);
+
+  // Parallel: section ownership check + last task order
+  const [section, lastTask] = await Promise.all([
+    prisma.section.findUnique({ where: { id: sectionId }, select: { projectId: true } }),
     prisma.task.findFirst({ where: { sectionId }, orderBy: { order: "desc" } }),
   ]);
+  if (!section || section.projectId !== projectId) {
+    return { error: "Section does not belong to this project" };
+  }
 
   const task = await prisma.task.create({
     data: {
@@ -101,6 +108,7 @@ export async function updateTask(taskId: string, data: {
     prisma.task.findUnique({ where: { id: taskId } }),
   ]);
   if (!task) return { error: "Task not found" };
+  await assertProjectMember(user.id, task.projectId);
 
   await prisma.task.update({
     where: { id: taskId },
@@ -192,11 +200,13 @@ export async function updateTask(taskId: string, data: {
 }
 
 export async function deleteTask(taskId: string) {
+  const userId = await getCurrentUserId();
   const task = await prisma.task.findUnique({
     where: { id: taskId },
     include: { assignees: { select: { userId: true } } },
   });
   if (!task) return { error: "Task not found" };
+  await assertProjectMember(userId, task.projectId);
 
   // Remove calendar events before deleting
   if (task.calendarEventId) {
@@ -218,6 +228,8 @@ export async function moveTask(taskId: string, newSectionId: string, newOrder: n
     prisma.section.findUnique({ where: { id: newSectionId } }),
   ]);
   if (!task) return;
+  await assertProjectMember(user.id, task.projectId);
+  if (newSection) await assertProjectMember(user.id, newSection.projectId);
 
   await prisma.task.update({
     where: { id: taskId },
@@ -241,6 +253,8 @@ export async function moveTask(taskId: string, newSectionId: string, newOrder: n
 }
 
 export async function getTask(taskId: string) {
+  const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
   return prisma.task.findUnique({
     where: { id: taskId },
     include: {
@@ -290,6 +304,8 @@ export async function getFilteredTasks(projectId: string, filters: {
   completed?: boolean;
   search?: string;
 }) {
+  const userId = await getCurrentUserId();
+  await assertProjectMember(userId, projectId);
   const where: Record<string, unknown> = { projectId };
 
   if (filters.assigneeId) where.assigneeId = filters.assigneeId;
@@ -327,6 +343,7 @@ export async function addTaskAssignee(taskId: string, userId: string) {
     prisma.taskAssignee.findUnique({ where: { taskId_userId: { taskId, userId } } }),
   ]);
   if (!task) return { error: "Task not found" };
+  await assertProjectMember(user.id, task.projectId);
   if (existing) return { error: "User already assigned" };
 
   await prisma.taskAssignee.create({
@@ -373,6 +390,7 @@ export async function removeTaskAssignee(taskId: string, userId: string) {
     prisma.task.findUnique({ where: { id: taskId } }),
   ]);
   if (!task) return { error: "Task not found" };
+  await assertProjectMember(user.id, task.projectId);
 
   await prisma.taskAssignee.deleteMany({
     where: { taskId, userId },
@@ -406,6 +424,7 @@ export async function updateTaskAssignees(taskId: string, userIds: string[]) {
     prisma.task.findUnique({ where: { id: taskId }, include: { assignees: true } }),
   ]);
   if (!task) return { error: "Task not found" };
+  await assertProjectMember(user.id, task.projectId);
 
   const currentIds = task.assignees.map((a) => a.userId);
   const toAdd = userIds.filter((id) => !currentIds.includes(id));

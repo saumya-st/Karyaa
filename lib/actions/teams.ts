@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { cache } from "react";
+import { MANAGER_ROLES, assertTeamRole, isAuthorizationError } from "@/lib/authz";
 
 export async function createTeam(name: string) {
   const userId = await getCurrentUserId();
@@ -51,6 +52,14 @@ async function fetchTeams(userId: string) {
 }
 
 export async function inviteToTeam(teamId: string, email: string) {
+  const currentUserId = await getCurrentUserId();
+  try {
+    await assertTeamRole(currentUserId, teamId, MANAGER_ROLES);
+  } catch (err) {
+    if (isAuthorizationError(err)) return { error: "Only team owners and admins can invite members" };
+    throw err;
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return { error: "User not found" };
 
@@ -63,28 +72,39 @@ export async function inviteToTeam(teamId: string, email: string) {
     data: { userId: user.id, teamId, role: "member" },
   });
 
-  // Bust both users' list caches
-  const currentUserId = await getCurrentUserId();
   revalidatePath("/dashboard");
   return { success: true };
 }
 
 export async function removeFromTeam(teamId: string, userId: string) {
+  const currentUserId = await getCurrentUserId();
+
+  // Members may leave a team themselves; removing someone else needs owner/admin.
+  if (userId !== currentUserId) {
+    try {
+      await assertTeamRole(currentUserId, teamId, MANAGER_ROLES);
+    } catch (err) {
+      if (isAuthorizationError(err)) return { error: "Only team owners and admins can remove members" };
+      throw err;
+    }
+  }
+
   await prisma.teamMember.delete({
     where: { userId_teamId: { userId, teamId } },
   });
   revalidatePath("/dashboard");
+  return { success: true };
 }
 
 export async function deleteTeam(teamId: string) {
   const userId = await getCurrentUserId();
 
   // Only team owner can delete
-  const membership = await prisma.teamMember.findUnique({
-    where: { userId_teamId: { userId, teamId } },
-  });
-  if (!membership || membership.role !== "owner") {
-    return { error: "Only the team owner can delete the team" };
+  try {
+    await assertTeamRole(userId, teamId, ["owner"]);
+  } catch (err) {
+    if (isAuthorizationError(err)) return { error: "Only the team owner can delete the team" };
+    throw err;
   }
 
   // Cascade will delete projects, tasks, etc.

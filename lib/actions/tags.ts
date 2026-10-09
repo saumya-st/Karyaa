@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { assertTaskMember } from "@/lib/authz";
 
 export async function createTag(name: string, color?: string) {
   await getCurrentUserId();
@@ -18,6 +19,7 @@ export async function createTag(name: string, color?: string) {
 }
 
 export async function getTags() {
+  await getCurrentUserId();
   return prisma.tag.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { tasks: true } } },
@@ -25,7 +27,8 @@ export async function getTags() {
 }
 
 export async function addTagToTask(taskId: string, tagId: string) {
-  await getCurrentUserId();
+  const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
 
   const existing = await prisma.taskTag.findUnique({
     where: { taskId_tagId: { taskId, tagId } },
@@ -44,6 +47,8 @@ export async function addTagToTask(taskId: string, tagId: string) {
 }
 
 export async function removeTagFromTask(taskId: string, tagId: string) {
+  const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
   await prisma.taskTag.deleteMany({
     where: { taskId, tagId },
   });
@@ -56,6 +61,8 @@ export async function removeTagFromTask(taskId: string, tagId: string) {
 }
 
 export async function getTaskTags(taskId: string) {
+  const userId = await getCurrentUserId();
+  await assertTaskMember(userId, taskId);
   const taskTags = await prisma.taskTag.findMany({
     where: { taskId },
     include: { tag: true },
@@ -64,6 +71,8 @@ export async function getTaskTags(taskId: string) {
 }
 
 export async function deleteTag(tagId: string) {
+  // Tags are global (not scoped to a team), so only authentication applies here.
+  await getCurrentUserId();
   await prisma.tag.delete({ where: { id: tagId } });
   return { success: true };
 }
