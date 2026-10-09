@@ -7,7 +7,10 @@
     "build": "node scripts/prisma-stub-fix.js && prisma generate && next build",
     "postinstall": "node scripts/prisma-stub-fix.js && prisma generate",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
